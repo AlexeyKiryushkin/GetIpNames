@@ -10,27 +10,10 @@ using System.Windows.Forms;
 
 namespace GetIpNames
 {
-	class IPAddressComparable : IPAddress, IComparable<IPAddressComparable>
-	{
-		public IPAddressComparable(byte[] address)
-			: base(address)
-		{
-		}
-
-		public int CompareTo(IPAddressComparable other)
-		{
-			Int32 thisIp = NetworkToHostOrder(BitConverter.ToInt32(GetAddressBytes(), 0));
-			Int32 otherIp = NetworkToHostOrder(BitConverter.ToInt32(other.GetAddressBytes(), 0));
-
-			return thisIp.CompareTo(otherIp);
-		}
-	}
-
 	class GetIpNames
 	{
 		// куда поместятся все имена
-		static SortedDictionary<IPAddressComparable, string> _result =
-			 new SortedDictionary<IPAddressComparable, string>();
+		static SortedDictionary<IPAddressComparable, string> _result = new SortedDictionary<IPAddressComparable, string>();
 
 		static int _allips = 0;
 
@@ -38,63 +21,74 @@ namespace GetIpNames
 
 		static string _outfilename;
 
-		static void Main(string[] args)
+		static IPAddress _adr_begin = IPAddress.Parse("192.168.1.1");
+		static IPAddress _adr_end = IPAddress.Parse("192.168.1.255");
+
+		static byte[] _bytes_begin;
+		static byte[] _bytes_end;
+
+		static bool IsParamsValid(string[] args)
 		{
-			Thread.CurrentThread.CurrentUICulture = new CultureInfo("ru-RU", false);
+			if (args.Length >= 2)
+			{
+				if (!IPAddress.TryParse(args[0], out _adr_begin))
+				{
+					Console.WriteLine(args[0] + " не является IP адресом!");
+					return false;
+				}
 
-			string ip_begin = "192.168.1.1";
-			string ip_end = "192.168.1.255";
-			IPAddress adr_begin = IPAddress.Parse(ip_begin);
-			IPAddress adr_end = IPAddress.Parse(ip_end);
+				if (!IPAddress.TryParse(args[1], out _adr_end))
+				{
+					Console.WriteLine(args[1] + " не является IP адресом!");
+					return false;
+				}
+			}
 
+			_bytes_begin = _adr_begin.GetAddressBytes();
+			_bytes_end = _adr_end.GetAddressBytes();
+
+			if (_bytes_begin[0] != _bytes_end[0] ||
+				 _bytes_begin[1] != _bytes_end[1] ||
+				 _bytes_begin[2] != _bytes_end[2] ||
+				 _bytes_begin[3] > _bytes_end[3])
+			{
+				Console.WriteLine("Некорректный диапазон IP адресов!");
+				return false;
+			}
+
+			// всего будет
+			_allips = _bytes_end[3] - _bytes_begin[3] + 1;
+
+			return true;
+		}
+
+		static void CreateOutFileName()
+		{
 			DateTime now = DateTime.Now;
+
 			_outfilename = string.Format("{0}\\ip_{1,4:0000}{2,2:00}{3,2:00}_{4,2:00}{5,2:00}.txt",
 				Application.StartupPath, now.Year, now.Month, now.Day, now.Hour, now.Minute);
 
 			if (File.Exists(_outfilename))
 				File.Delete(_outfilename);
+		}
 
-			if (args.Length >= 2)
-			{
-				if (IPAddress.TryParse(args[0], out adr_begin))
-					ip_begin = args[0];
-				else
-				{
-					Console.WriteLine(args[0] + " не является IP адресом!");
-					return;
-				}
+		static void Main(string[] args)
+		{
+			Thread.CurrentThread.CurrentUICulture = new CultureInfo("ru-RU", false);
 
-				if (IPAddress.TryParse(args[1], out adr_end))
-					ip_end = args[1];
-				else
-				{
-					Console.WriteLine(args[1] + " не является IP адресом!");
-					return;
-				}
-			}
-
-			byte[] bytes_begin = adr_begin.GetAddressBytes();
-			byte[] bytes_end = adr_end.GetAddressBytes();
-
-			if (bytes_begin[0] != bytes_end[0] ||
-				 bytes_begin[1] != bytes_end[1] ||
-				 bytes_begin[2] != bytes_end[2] ||
-				 bytes_begin[3] > bytes_end[3])
-			{
-				Console.WriteLine("Некорректный диапазон IP адресов!");
+			if (!IsParamsValid(args))
 				return;
-			}
 
-			// всего будет
-			_allips = bytes_end[3] - bytes_begin[3] + 1;
+			CreateOutFileName();
 
 			_getHostEntryFinished.Reset();
 
 			byte[] cur = new byte[4];
-			Array.Copy(bytes_begin, cur, 4);
+			Array.Copy(_bytes_begin, cur, 4);
 
 			// инициирование заполнения
-			for (; cur[3] <= bytes_end[3]; ++cur[3])
+			for (; cur[3] <= _bytes_end[3]; ++cur[3])
 			{
 				Thread.Sleep(10);
 				IPAddressComparable adr = new IPAddressComparable(cur);

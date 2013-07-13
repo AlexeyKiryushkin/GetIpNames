@@ -82,6 +82,13 @@ namespace GetIpNames
 
 			CreateOutFileName();
 
+			ScanIps();
+
+			WriteResultFile();
+		}
+
+		private static async void ScanIps()
+		{
 			_getHostEntryFinished.Reset();
 
 			byte[] cur = new byte[4];
@@ -90,9 +97,11 @@ namespace GetIpNames
 			// инициирование заполнения
 			for (; cur[3] <= _bytes_end[3]; ++cur[3])
 			{
-				Thread.Sleep(10);
 				IPAddressComparable adr = new IPAddressComparable(cur);
-				Dns.BeginGetHostEntry(adr, new AsyncCallback(GetHostEntryCallback), adr);
+
+				IPHostEntry curhost = await Dns.GetHostEntryAsync(adr);
+
+				AddNewHostName(adr, curhost.HostName);
 
 				if (cur[3] == 255)
 					break;
@@ -100,24 +109,10 @@ namespace GetIpNames
 
 			// ожидание окончания
 			_getHostEntryFinished.WaitOne();
-
-			WriteResultFile();
 		}
 
-		public static void GetHostEntryCallback(IAsyncResult ar)
+		static void AddNewHostName(IPAddressComparable adr, string hostname)
 		{
-			IPAddressComparable adr = (IPAddressComparable)ar.AsyncState;
-
-			string hostname;
-			try
-			{
-				hostname = Dns.EndGetHostEntry(ar).HostName;
-			}
-			catch (Exception ex)
-			{
-				hostname = ExceptionFullMessage.GetMessages(ex);
-			}
-
 			if (hostname == adr.ToString())
 			{
 				Ping pingsender = new Ping();
@@ -126,17 +121,29 @@ namespace GetIpNames
 					hostname = "";
 			}
 
-			lock (_result)
-			{
-				if (!_result.ContainsKey(adr))
+			if (!_result.ContainsKey(adr))
 					_result.Add(adr, hostname);
-			}
 
 			Console.WriteLine(String.Format("{0,-16}  {1}", adr, hostname));
-
-			if (_result.Count == _allips)
-				_getHostEntryFinished.Set();
 		}
+
+		//public static void GetHostEntryCallback(IAsyncResult ar)
+		//{
+		//	IPAddressComparable adr = (IPAddressComparable)ar.AsyncState;
+
+		//	string hostname;
+		//	try
+		//	{
+		//		hostname = Dns.EndGetHostEntry(ar).HostName;
+		//	}
+		//	catch (Exception ex)
+		//	{
+		//		hostname = ExceptionFullMessage.GetMessages(ex);
+		//	}
+
+		//	if (_result.Count == _allips)
+		//		_getHostEntryFinished.Set();
+		//}
 
 		static void WriteResultFile()
 		{

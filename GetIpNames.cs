@@ -76,6 +76,8 @@ namespace GetIpNames
 		static void Main(string[] args)
 		{
 			Thread.CurrentThread.CurrentUICulture = new CultureInfo("ru-RU", false);
+			Thread.CurrentThread.Name = "Main";
+			ThreadTrace.LogThreads();
 
 			if (!IsParamsValid(args))
 				return;
@@ -84,13 +86,19 @@ namespace GetIpNames
 
 			ScanIps();
 
+			ThreadTrace.WriteLine("Нажмите Enter для завершения...");
+			ThreadTrace.LogThreads();
+			Console.ReadLine();
+
 			WriteResultFile();
+
+			ThreadTrace.LogThreads();
+			ThreadTrace.WriteLine("Нажмите Enter для завершения...");
+			Console.ReadLine();
 		}
 
 		private static async void ScanIps()
 		{
-			_getHostEntryFinished.Reset();
-
 			byte[] cur = new byte[4];
 			Array.Copy(_bytes_begin, cur, 4);
 
@@ -99,16 +107,20 @@ namespace GetIpNames
 			{
 				IPAddressComparable adr = new IPAddressComparable(cur);
 
-				IPHostEntry curhost = await Dns.GetHostEntryAsync(adr);
-
-				AddNewHostName(adr, curhost.HostName);
+				try
+				{
+					IPHostEntry curhost = await Dns.GetHostEntryAsync(adr);
+					AddNewHostName(adr, curhost.HostName);
+				}
+				catch (Exception ex)
+				{
+					ThreadTrace.WriteLine(String.Format("{0,-16}  {1}", adr, ex.GetMessages()));
+					ThreadTrace.LogThreads();
+				}
 
 				if (cur[3] == 255)
 					break;
 			}
-
-			// ожидание окончания
-			_getHostEntryFinished.WaitOne();
 		}
 
 		static void AddNewHostName(IPAddressComparable adr, string hostname)
@@ -124,32 +136,14 @@ namespace GetIpNames
 			if (!_result.ContainsKey(adr))
 					_result.Add(adr, hostname);
 
-			Console.WriteLine(String.Format("{0,-16}  {1}", adr, hostname));
+			ThreadTrace.WriteLine(String.Format("{0,-16}  {1}", adr, hostname));
+			ThreadTrace.LogThreads();
 		}
-
-		//public static void GetHostEntryCallback(IAsyncResult ar)
-		//{
-		//	IPAddressComparable adr = (IPAddressComparable)ar.AsyncState;
-
-		//	string hostname;
-		//	try
-		//	{
-		//		hostname = Dns.EndGetHostEntry(ar).HostName;
-		//	}
-		//	catch (Exception ex)
-		//	{
-		//		hostname = ExceptionFullMessage.GetMessages(ex);
-		//	}
-
-		//	if (_result.Count == _allips)
-		//		_getHostEntryFinished.Set();
-		//}
 
 		static void WriteResultFile()
 		{
-
 			// вывод в файл
-			using (StreamWriter outf = new StreamWriter(_outfilename, false, Encoding.GetEncoding(1251)))
+			using (StreamWriter outf = new StreamWriter(path:_outfilename, append:false, encoding:Encoding.UTF8))
 			{
 				foreach (KeyValuePair<IPAddressComparable, string> next in _result)
 				{
@@ -160,31 +154,3 @@ namespace GetIpNames
 		}
 	}
 }
-
-//// синхронный вариант
-//using (StreamWriter outf = new StreamWriter(outfilename, false, Encoding.GetEncoding(1251)))
-//{
-//   byte[] cur = new byte[4];
-//   Array.Copy(bytes_begin, cur, 4);
-
-//   for (; cur[3] <= bytes_end[3]; ++cur[3])
-//   {
-//      IPAddress adr = new IPAddress(cur);
-//      string hostname = "";
-//      Ping pingsender = new Ping();
-//      PingReply repl = pingsender.Send(adr, timeout);
-//      if (repl.Status == IPStatus.Success)
-//      {
-//         try
-//         {
-//            hostname = Dns.GetHostEntry(adr).HostName;
-//         }
-//         catch (Exception)
-//         {
-//         }
-//      }
-//      string result = String.Format("{0,-16}  {1}", adr, hostname);
-//      Console.WriteLine(result);
-//      outf.WriteLine(result);
-//   }
-//}

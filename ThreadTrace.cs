@@ -7,58 +7,72 @@ using System.Threading;
 
 namespace GetIpNames
 {
-   /// <summary>
-   /// Вывод трассировки с данными потока
-   /// </summary>
-   public class ThreadTrace
-   {
-      [DllImport("kernel32.dll")]
-      private static extern uint GetCurrentThreadId();
+	/// <summary>
+	/// Вывод трассировки с данными потока
+	/// </summary>
+	public class ThreadTrace
+	{
+		[DllImport("kernel32.dll")]
+		private static extern uint GetCurrentThreadId();
 
-      /// <summary>
-      /// Трассировка с выводом данных потока
-      /// </summary>
-      /// <param name="msg">Собственно сообщение</param>
-      public static void WriteLine(string msg)
-      {
-         Trace.WriteLine(string.Format("[{0,2:D}:{1,4:D}] {2,-10}: {3}",
-            Thread.CurrentThread.ManagedThreadId,
-            GetCurrentThreadId(),
-            Thread.CurrentThread.Name ?? "",
-            msg));
-      }
+		/// <summary>
+		/// Трассировка с выводом данных потока
+		/// </summary>
+		/// <param name="msg">Собственно сообщение</param>
+		public static void WriteLine(string msg)
+		{
+			Console.WriteLine(string.Format("[{0,2:D}:{1,4:D}] {2,-10}: {3}",
+				 Thread.CurrentThread.ManagedThreadId,
+				 GetCurrentThreadId(),
+				 Thread.CurrentThread.Name ?? "",
+				 msg));
+		}
 
-      /// <summary>
-      /// Трассировка с выводом данных потока
-      /// </summary>
-      /// <param name="e">Исключение</param>
-      public static void WriteLine(Exception e)
-      {
-         WriteLine(ExceptionFullMessage.GetMessages(e));
-      }
-   }
+		/// <summary>
+		/// Трассировка с выводом данных потока
+		/// </summary>
+		/// <param name="e">Исключение</param>
+		public static void WriteLine(Exception e)
+		{
+			WriteLine(e.GetMessages());
+		}
 
-   /// <summary>
-   /// Сообщение из исключения, включаяя вложенные
-   /// </summary>
-   public static class ExceptionFullMessage
-   {
-      /// <summary>
-      /// Собирает строку из сообщений переданного и вложенных исключений
-      /// </summary>
-      /// <param name="e">Исключение из которого надо получить сообщение об ошибке</param>
-      /// <returns>Собранные в строку сообщения из исключений</returns>
-      public static string GetMessages(Exception e)
-      {
-         string msgs = e.GetType() + ". " + e.Message;
-         Exception ex = e;
-         while(ex.InnerException != null)
-         {
-            msgs += ": " + ex.InnerException.Message;
-            ex = ex.InnerException;
-         }
+		public static void LogThreads()
+		{
+			int workerThreads;
+			int portThreads;
 
-         return msgs;
-      }
-   }
+			ThreadPool.GetMaxThreads(out workerThreads, out portThreads);
+			WriteLine(string.Format("Максимально рабочих потоков в пуле: {0}. Максимально потоков портов ввода/вывода: {1}", 
+				workerThreads, portThreads));
+
+			ThreadPool.GetAvailableThreads(out workerThreads, out portThreads);
+			WriteLine(string.Format("Доступно рабочих потоков в пуле: {0}. Доступно потоков портов ввода/вывода: {1}{2}",
+				workerThreads, portThreads, Environment.NewLine));
+		}
+	}
+
+	/// <summary>
+	/// Расширение для получения подного сообщения об ошибке
+	/// </summary>
+	public static class FullExceptionMessage
+	{
+		/// <summary>
+		/// Собирает строку из сообщений переданного и вложенных исключений
+		/// </summary>
+		/// <param name="e">Исключение из которого надо получить сообщение об ошибке</param>
+		/// <returns>Собранные в строку сообщения из исключений</returns>
+		public static string GetMessages(this Exception e)
+		{
+			string msgs = e.GetType() + ". " + e.Message;
+			Exception ex = e;
+			while (ex.InnerException != null)
+			{
+				msgs += ": " + ex.InnerException.Message;
+				ex = ex.InnerException;
+			}
+
+			return msgs;
+		}
+	}
 }

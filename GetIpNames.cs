@@ -7,6 +7,8 @@ using System.IO;
 using System.Threading;
 using System.Globalization;
 using System.Windows.Forms;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace GetIpNames
 {
@@ -121,6 +123,27 @@ namespace GetIpNames
 				if (cur[3] == 255)
 					break;
 			}
+		}
+
+		private static async void ScanAllIps()
+		{
+			//List<byte[]> allipslist = new List<byte[]>();
+			List<Task<IPHostEntry>> tasks = new List<Task<IPHostEntry>>();
+
+			// инициирование заполнения
+			byte[] cur = new byte[4];
+			Array.Copy(_bytes_begin, cur, 4);
+			for (; cur[3] <= _bytes_end[3]; ++cur[3])
+			{
+				IPAddressComparable adr = new IPAddressComparable(cur);
+				tasks.Add(Dns.GetHostEntryAsync(adr));
+			}
+
+			Task<IPHostEntry[]> allscans = Task.WhenAll(tasks);
+			IPHostEntry[] ips = await allscans;
+
+			//IEnumerable<Task<IPHostEntry>> tasks = allipslist.Select(Dns.GetHostEntryAsync);
+			//tasks = tasks.ToList();
 		}
 
 		static void AddNewHostName(IPAddressComparable adr, string hostname)

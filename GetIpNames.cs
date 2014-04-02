@@ -79,7 +79,7 @@ namespace GetIpNames
 		{
 			Thread.CurrentThread.CurrentUICulture = new CultureInfo("ru-RU", false);
 			Thread.CurrentThread.Name = "Main";
-			ThreadTrace.LogThreads();
+			//ThreadTrace.LogThreads();
 
 			if (!IsParamsValid(args))
 				return;
@@ -89,12 +89,12 @@ namespace GetIpNames
 			ScanIps();
 
 			ThreadTrace.WriteLine("Нажмите Enter для завершения...");
-			ThreadTrace.LogThreads();
+			//ThreadTrace.LogThreads();
 			Console.ReadLine();
 
 			WriteResultFile();
 
-			ThreadTrace.LogThreads();
+			//ThreadTrace.LogThreads();
 			ThreadTrace.WriteLine("Нажмите Enter для завершения...");
 			Console.ReadLine();
 		}
@@ -117,7 +117,7 @@ namespace GetIpNames
 				catch (Exception ex)
 				{
 					ThreadTrace.WriteLine(String.Format("{0,-16}  {1}", adr, ex.GetMessages()));
-					ThreadTrace.LogThreads();
+					//ThreadTrace.LogThreads();
 				}
 
 				if (cur[3] == 255)
@@ -160,7 +160,7 @@ namespace GetIpNames
 					_result.Add(adr, hostname);
 
 			ThreadTrace.WriteLine(String.Format("{0,-16}  {1}", adr, hostname));
-			ThreadTrace.LogThreads();
+			//ThreadTrace.LogThreads();
 		}
 
 		static void WriteResultFile()

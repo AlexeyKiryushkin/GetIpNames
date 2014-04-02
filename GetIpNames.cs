@@ -19,7 +19,7 @@ namespace GetIpNames
 
 		static int _allips = 0;
 
-		public static ManualResetEvent _getHostEntryFinished = new ManualResetEvent(false);
+		//public static ManualResetEvent _getHostEntryFinished = new ManualResetEvent(false);
 
 		static string _outfilename;
 
@@ -79,49 +79,90 @@ namespace GetIpNames
 		{
 			Thread.CurrentThread.CurrentUICulture = new CultureInfo("ru-RU", false);
 			Thread.CurrentThread.Name = "Main";
-			//ThreadTrace.LogThreads();
 
 			if (!IsParamsValid(args))
 				return;
 
 			CreateOutFileName();
 
-			ScanIps();
+			var res = ScanIps();
 
-			ThreadTrace.WriteLine("Нажмите Enter для завершения...");
-			//ThreadTrace.LogThreads();
-			Console.ReadLine();
+			// ждём когда возвратится полный список
+			res.Wait();
+
+			_result = res.Result;
 
 			WriteResultFile();
 
-			//ThreadTrace.LogThreads();
 			ThreadTrace.WriteLine("Нажмите Enter для завершения...");
 			Console.ReadLine();
 		}
 
-		private static async void ScanIps()
+		private static async Task<SortedDictionary<IPAddressComparable, string>> ScanIps()
 		{
 			byte[] cur = new byte[4];
 			Array.Copy(_bytes_begin, cur, 4);
+			var result = new SortedDictionary<IPAddressComparable, string>();
 
 			// инициирование заполнения
 			for (; cur[3] <= _bytes_end[3]; ++cur[3])
 			{
 				IPAddressComparable adr = new IPAddressComparable(cur);
+				string hostname = await GetHostName(adr);
 
-				try
+				if (!result.ContainsKey(adr))
 				{
-					IPHostEntry curhost = await Dns.GetHostEntryAsync(adr);
-					AddNewHostName(adr, curhost.HostName);
-				}
-				catch (Exception ex)
-				{
-					ThreadTrace.WriteLine(String.Format("{0,-16}  {1}", adr, ex.GetMessages()));
-					//ThreadTrace.LogThreads();
+					result.Add(adr, hostname);
+
+					ThreadTrace.WriteLine(String.Format("{0,-16}  {1}", adr, hostname));
 				}
 
 				if (cur[3] == 255)
 					break;
+			}
+
+			return result;
+		}
+
+		/// <summary>
+		/// Получает, проверяет и возвращает имя хоста
+		/// </summary>
+		/// <param name="adr">IP адрес</param>
+		/// <returns>Имя хоста</returns>
+		private static async Task<string> GetHostName(IPAddressComparable adr)
+		{
+			string hostname = "";
+
+			try
+			{
+				IPHostEntry curhost = await Dns.GetHostEntryAsync(adr);
+				hostname = curhost.HostName;
+				if (hostname == adr.ToString())
+				{
+					Ping pingsender = new Ping();
+					PingReply repl = pingsender.Send(adr, 300);
+					if (repl.Status != IPStatus.Success)
+						hostname = "";
+				}
+			}
+			catch (Exception ex)
+			{
+				ThreadTrace.WriteLine(String.Format("{0,-16}  --> {1}", adr, ex.GetMessages()));
+			}
+
+			return hostname;
+		}
+
+		static void WriteResultFile()
+		{
+			// вывод в файл
+			using (StreamWriter outf = new StreamWriter(path:_outfilename, append:false, encoding:Encoding.UTF8))
+			{
+				foreach (var next in _result)
+				{
+					if (next.Value != "")
+						outf.WriteLine(String.Format("{0,-16}  {1}", next.Key, next.Value));
+				}
 			}
 		}
 
@@ -146,34 +187,5 @@ namespace GetIpNames
 			//tasks = tasks.ToList();
 		}
 
-		static void AddNewHostName(IPAddressComparable adr, string hostname)
-		{
-			if (hostname == adr.ToString())
-			{
-				Ping pingsender = new Ping();
-				PingReply repl = pingsender.Send(adr, 300);
-				if (repl.Status != IPStatus.Success)
-					hostname = "";
-			}
-
-			if (!_result.ContainsKey(adr))
-					_result.Add(adr, hostname);
-
-			ThreadTrace.WriteLine(String.Format("{0,-16}  {1}", adr, hostname));
-			//ThreadTrace.LogThreads();
-		}
-
-		static void WriteResultFile()
-		{
-			// вывод в файл
-			using (StreamWriter outf = new StreamWriter(path:_outfilename, append:false, encoding:Encoding.UTF8))
-			{
-				foreach (KeyValuePair<IPAddressComparable, string> next in _result)
-				{
-					if (next.Value != "")
-						outf.WriteLine(String.Format("{0,-16}  {1}", next.Key, next.Value));
-				}
-			}
-		}
 	}
 }

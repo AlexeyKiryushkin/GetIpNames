@@ -12,20 +12,16 @@ namespace GetIpNames
 	/// </summary>
 	public class ThreadTrace
 	{
-		[DllImport("kernel32.dll")]
-		private static extern uint GetCurrentThreadId();
-
 		/// <summary>
 		/// Трассировка с выводом данных потока
 		/// </summary>
 		/// <param name="msg">Собственно сообщение</param>
 		public static void WriteLine(string msg)
 		{
-			Console.WriteLine(string.Format("[{0,2:D}:{1,4:D}] {2,-10}: {3}",
-				 Thread.CurrentThread.ManagedThreadId,
-				 GetCurrentThreadId(),
-				 Thread.CurrentThread.Name ?? "",
-				 msg));
+			Console.WriteLine(string.Format("{0:HH:mm:ss} [{1,2:D}]: {2}",
+				DateTime.Now,
+				Thread.CurrentThread.ManagedThreadId,
+				msg));
 		}
 
 		/// <summary>

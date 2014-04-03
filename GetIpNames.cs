@@ -1,14 +1,12 @@
 using System;
 using System.Collections.Generic;
-using System.Text;
-using System.Net;
-using System.Net.NetworkInformation;
 using System.IO;
-using System.Threading;
-using System.Globalization;
-using System.Windows.Forms;
 using System.Linq;
+using System.Net;
+using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Forms;
 
 namespace GetIpNames
 {
@@ -16,10 +14,6 @@ namespace GetIpNames
 	{
 		// куда помест€тс€ все имена
 		static SortedDictionary<IPAddressComparable, string> _result = new SortedDictionary<IPAddressComparable, string>();
-
-		static int _allips = 0;
-
-		//public static ManualResetEvent _getHostEntryFinished = new ManualResetEvent(false);
 
 		static string _outfilename;
 
@@ -58,9 +52,6 @@ namespace GetIpNames
 				return false;
 			}
 
-			// всего будет
-			_allips = _bytes_end[3] - _bytes_begin[3] + 1;
-
 			return true;
 		}
 
@@ -77,80 +68,51 @@ namespace GetIpNames
 
 		static void Main(string[] args)
 		{
-			Thread.CurrentThread.CurrentUICulture = new CultureInfo("ru-RU", false);
-			Thread.CurrentThread.Name = "Main";
-
 			if (!IsParamsValid(args))
 				return;
 
+			ThreadPool.SetMinThreads(60, 60);
+
 			CreateOutFileName();
 
-			var res = ScanIps();
-
-			// ждЄм когда возвратитс€ полный список
-			res.Wait();
-
-			_result = res.Result;
+			_result = ScanIps();
 
 			WriteResultFile();
-
-			ThreadTrace.WriteLine("Ќажмите Enter дл€ завершени€...");
-			Console.ReadLine();
 		}
 
-		private static async Task<SortedDictionary<IPAddressComparable, string>> ScanIps()
+		private static SortedDictionary<IPAddressComparable, string> ScanIps()
 		{
 			byte[] cur = new byte[4];
 			Array.Copy(_bytes_begin, cur, 4);
+
 			var result = new SortedDictionary<IPAddressComparable, string>();
 
-			// инициирование заполнени€
+			var iplist = new List<IPAddressComparable>();
+
+			// список IP дл€ сканировани€
 			for (; cur[3] <= _bytes_end[3]; ++cur[3])
+				iplist.Add(new IPAddressComparable(cur));
+
+			var tasks = iplist.Select<IPAddressComparable, Task>(async ip =>
 			{
-				IPAddressComparable adr = new IPAddressComparable(cur);
-				string hostname = await GetHostName(adr);
-
-				if (!result.ContainsKey(adr))
+				try
 				{
-					result.Add(adr, hostname);
+					var host = await Dns.GetHostEntryAsync(ip);
+					string hostname = host.HostName;
 
-					ThreadTrace.WriteLine(String.Format("{0,-16}  {1}", adr, hostname));
+					ThreadTrace.WriteLine(String.Format("{0,-16} {1}", ip, hostname));
+
+					result.Add(ip, hostname);
 				}
+				catch (Exception ex)
+				{
+					ThreadTrace.WriteLine(String.Format("{0,-16} {1}", ip, ex.Message));
+				}
+			}).ToArray();
 
-				if (cur[3] == 255)
-					break;
-			}
+			Task.WaitAll(tasks);
 
 			return result;
-		}
-
-		/// <summary>
-		/// ѕолучает, провер€ет и возвращает им€ хоста
-		/// </summary>
-		/// <param name="adr">IP адрес</param>
-		/// <returns>»м€ хоста</returns>
-		private static async Task<string> GetHostName(IPAddressComparable adr)
-		{
-			string hostname = "";
-
-			try
-			{
-				IPHostEntry curhost = await Dns.GetHostEntryAsync(adr);
-				hostname = curhost.HostName;
-				if (hostname == adr.ToString())
-				{
-					Ping pingsender = new Ping();
-					PingReply repl = pingsender.Send(adr, 300);
-					if (repl.Status != IPStatus.Success)
-						hostname = "";
-				}
-			}
-			catch (Exception ex)
-			{
-				ThreadTrace.WriteLine(String.Format("{0,-16}  --> {1}", adr, ex.GetMessages()));
-			}
-
-			return hostname;
 		}
 
 		static void WriteResultFile()
@@ -165,27 +127,5 @@ namespace GetIpNames
 				}
 			}
 		}
-
-		private static async void ScanAllIps()
-		{
-			//List<byte[]> allipslist = new List<byte[]>();
-			List<Task<IPHostEntry>> tasks = new List<Task<IPHostEntry>>();
-
-			// инициирование заполнени€
-			byte[] cur = new byte[4];
-			Array.Copy(_bytes_begin, cur, 4);
-			for (; cur[3] <= _bytes_end[3]; ++cur[3])
-			{
-				IPAddressComparable adr = new IPAddressComparable(cur);
-				tasks.Add(Dns.GetHostEntryAsync(adr));
-			}
-
-			Task<IPHostEntry[]> allscans = Task.WhenAll(tasks);
-			IPHostEntry[] ips = await allscans;
-
-			//IEnumerable<Task<IPHostEntry>> tasks = allipslist.Select(Dns.GetHostEntryAsync);
-			//tasks = tasks.ToList();
-		}
-
 	}
 }

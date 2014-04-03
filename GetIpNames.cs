@@ -102,7 +102,8 @@ namespace GetIpNames
 
 					ThreadTrace.WriteLine(String.Format("{0,-16} {1}", ip, hostname));
 
-					result.Add(ip, hostname);
+					lock (_result)
+						result.Add(ip, hostname);
 				}
 				catch (Exception ex)
 				{
@@ -121,10 +122,7 @@ namespace GetIpNames
 			using (StreamWriter outf = new StreamWriter(path:_outfilename, append:false, encoding:Encoding.UTF8))
 			{
 				foreach (var next in _result)
-				{
-					if (next.Value != "")
-						outf.WriteLine(String.Format("{0,-16}  {1}", next.Key, next.Value));
-				}
+					outf.WriteLine(String.Format("{0,-16}  {1}", next.Key, next.Value));
 			}
 		}
 	}

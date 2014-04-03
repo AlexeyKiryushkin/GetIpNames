@@ -71,7 +71,7 @@ namespace GetIpNames
 			if (!IsParamsValid(args))
 				return;
 
-			ThreadPool.SetMinThreads(60, 60);
+			ThreadPool.SetMinThreads(200, 200);
 
 			CreateOutFileName();
 

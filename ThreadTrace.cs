@@ -18,7 +18,7 @@ namespace GetIpNames
 		/// <param name="msg">Собственно сообщение</param>
 		public static void WriteLine(string msg)
 		{
-			Console.WriteLine(string.Format("{0:HH:mm:ss} [{1,2:D}]: {2}",
+			Console.WriteLine(string.Format("{0:HH:mm:ss} [{1,3:D}]: {2}",
 				DateTime.Now,
 				Thread.CurrentThread.ManagedThreadId,
 				msg));

@@ -6,11 +6,11 @@ using System.Runtime.InteropServices;
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 [assembly: AssemblyTitle("GetIpNames")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyDescription("Сканирование подсети с выводом списка пингуемых IP с именами компьютеров")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("SKB PromInform")]
+[assembly: AssemblyCompany("")]
 [assembly: AssemblyProduct("GetIpNames")]
-[assembly: AssemblyCopyright("Copyright © SKB PromInform 2006")]
+[assembly: AssemblyCopyright("Copyright © 2006-2015")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
@@ -29,5 +29,5 @@ using System.Runtime.InteropServices;
 //      Build Number
 //      Revision
 //
-[assembly: AssemblyVersion("1.0.0.1")]
-[assembly: AssemblyFileVersion("1.0.0.1")]
+[assembly: AssemblyVersion("1.0.0.2")]
+[assembly: AssemblyFileVersion("1.0.0.2")]
